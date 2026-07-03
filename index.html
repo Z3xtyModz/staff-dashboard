@@ -730,6 +730,27 @@ async function loadPlayers() {
   renderGrid();
 }
 
+function debounce(fn, delay) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+// Multiple rows can change at once (e.g. a ban writes to punishments AND
+// staff_actions), so debounce the reload instead of firing one per event.
+const reloadPlayers = debounce(loadPlayers, 400);
+
+function subscribeToChanges() {
+  sb.channel('dashboard-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, reloadPlayers)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, reloadPlayers)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'punishments' }, reloadPlayers)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_actions' }, reloadPlayers)
+    .subscribe();
+}
+
 const statusMeta = {
   sus:    { color: "var(--warn)",   label: "In Screenshare" },
   banned: { color: "var(--danger)", label: "Banned" },
@@ -883,6 +904,7 @@ document.getElementById('tabs').addEventListener('click', (e) => {
 });
 
 loadPlayers();
+subscribeToChanges();
 </script>
 
 </body>
