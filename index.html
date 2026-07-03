@@ -602,6 +602,7 @@
     * { transition: none !important; animation: none !important; }
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -668,56 +669,66 @@
 </div>
 
 <script>
-// ---------- Fake data (swap this for a Supabase/API fetch later) ----------
-const players = [
-  {
-    name: "Steve", uuid: "f84c6a79-0a4e-45e0-879b-cd49ebd4c4e2",
-    status: "sus", online: true, risk: 78,
-    alerts: [
-      { check: "KillAura", vl: 8, time: "12:03:14", severity: "danger" },
-      { check: "Reach", vl: 6, time: "12:01:52", severity: "danger" },
-      { check: "AutoClicker", vl: 3, time: "11:58:20", severity: "warn" },
-      { check: "Timer", vl: 2, time: "11:40:05", severity: "warn" }
-    ],
-    punishments: [
-      { type: "Screenshare", detail: "Started by Admin_Rae", time: "2 min ago" },
-      { type: "Kick", detail: "Suspicious client brand", time: "3 days ago" }
-    ],
-    staffActions: [
-      { action: "/sus started", staff: "Admin_Rae", time: "12:04:01" },
-      { action: "Freeze applied", staff: "Admin_Rae", time: "12:03:58" },
-      { action: "Alert reviewed", staff: "Mod_Jax", time: "11:59:10" }
-    ]
-  },
-  {
-    name: "Alex", uuid: "3f1a9e2c-6b7d-4f10-9c2e-8a1d5f3b0e77",
-    status: "clear", online: true, risk: 12,
-    alerts: [
-      { check: "Timer", vl: 1, time: "09:12:44", severity: "warn" }
-    ],
-    punishments: [],
-    staffActions: [
-      { action: "Playtime reward granted", staff: "System", time: "1 hr ago" }
-    ]
-  },
-  {
-    name: "Notch", uuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5",
-    status: "banned", online: false, risk: 94,
-    alerts: [
-      { check: "XRay", vl: 12, time: "Yesterday 20:41", severity: "danger" },
-      { check: "Fly", vl: 9, time: "Yesterday 20:38", severity: "danger" },
-      { check: "Reach", vl: 5, time: "Yesterday 20:30", severity: "warn" }
-    ],
-    punishments: [
-      { type: "Ban", detail: "XRay confirmed — BAN-1042", time: "Yesterday" },
-      { type: "Screenshare", detail: "Confirmed cheats, banned by Admin_Rae", time: "Yesterday" }
-    ],
-    staffActions: [
-      { action: "Player banned", staff: "Admin_Rae", time: "Yesterday 20:45" },
-      { action: "/sus started", staff: "Admin_Rae", time: "Yesterday 20:41" }
-    ]
+// ---------- Supabase config ----------
+// Fill these in from: Supabase Dashboard → Settings → API
+const SUPABASE_URL = 'https://hcvsdlzqnakzeprouths.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjdnNkbHpxbmFremVwcm91dGhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDUyMTYsImV4cCI6MjA5ODYyMTIxNn0.ep5pc_9gQTgeHuMDU84NO3RNLFiuBysO7PBhWUewO2M';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let players = []; // populated by loadPlayers() below
+
+function formatTime(isoString) {
+  const d = new Date(isoString);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hr ago`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+async function loadPlayers() {
+  const [{ data: playerRows, error: pErr },
+         { data: alertRows, error: aErr },
+         { data: punishmentRows, error: puErr },
+         { data: staffRows, error: sErr }] = await Promise.all([
+    sb.from('players').select('*').order('risk', { ascending: false }),
+    sb.from('alerts').select('*').order('created_at', { ascending: false }),
+    sb.from('punishments').select('*').order('created_at', { ascending: false }),
+    sb.from('staff_actions').select('*').order('created_at', { ascending: false })
+  ]);
+
+  if (pErr || aErr || puErr || sErr) {
+    const err = pErr || aErr || puErr || sErr;
+    const details = [err.message, err.details, err.hint, err.code].filter(Boolean).join(' | ');
+    console.error('Supabase fetch error: ' + details);
+    grid.innerHTML = `<div class="empty-state">Couldn't load player data: ${details || 'unknown error'}. Check your Supabase URL/key and that the schema has been run.</div>`;
+    return;
   }
-];
+
+  players = playerRows.map(p => ({
+    name: p.name,
+    uuid: p.id,
+    status: p.status,
+    online: p.online,
+    risk: p.risk,
+    alerts: alertRows
+      .filter(a => a.player_id === p.id)
+      .map(a => ({ check: a.check_type, vl: a.vl, time: formatTime(a.created_at), severity: a.severity })),
+    punishments: punishmentRows
+      .filter(pu => pu.player_id === p.id)
+      .map(pu => ({ type: pu.type, detail: pu.detail, time: formatTime(pu.created_at) })),
+    staffActions: staffRows
+      .filter(s => s.player_id === p.id)
+      .map(s => ({ action: s.action, staff: s.staff, time: formatTime(s.created_at) }))
+  }));
+
+  renderGrid();
+}
 
 const statusMeta = {
   sus:    { color: "var(--warn)",   label: "In Screenshare" },
@@ -871,7 +882,7 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
 });
 
-renderGrid();
+loadPlayers();
 </script>
 
 </body>
