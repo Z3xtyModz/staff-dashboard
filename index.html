@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmic SMP — Staff Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b0c0d;
+    --bg-elevated: #131416;
+    --surface: #18191c;
+    --surface-hover: #202226;
+    --border: #26282c;
+    --border-soft: #1e2023;
+    --text-primary: #eceef0;
+    --text-secondary: #9a9ea5;
+    --text-muted: #5c6066;
+    --accent: #d4d6d9;
+    --accent-dim: #6b6d72;
+    --danger: #e0665c;
+    --danger-dim: #5a3330;
+    --warn: #d9b46a;
+    --warn-dim: #5a4e30;
+    --ring-track: #232529;
+    --radius-lg: 28px;
+    --radius-md: 18px;
+    --radius-sm: 12px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(255, 255, 255, 0.035), transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.02), transparent 35%);
+    min-height: 100vh;
+  }
+
+  ::selection { background: var(--accent-dim); color: white; }
+
+  /* ---------- Topbar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border-soft);
+    position: sticky;
+    top: 0;
+    background: rgba(11,12,13,0.85);
+    backdrop-filter: blur(12px);
+    z-index: 20;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: conic-gradient(from 180deg, var(--accent), var(--accent-dim), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 1px var(--border), 0 0 24px rgba(255,255,255,0.08);
+  }
+
+  .brand-mark::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    border-radius: 5px;
+    background: var(--bg);
+  }
+
+  .brand-text h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+
+  .brand-text span {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .live-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 7px 14px 7px 10px;
+    border-radius: 14px;
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  /* ---------- Layout: sidebar + main ---------- */
+  .layout {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .sidebar {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 24px 16px;
+    position: sticky;
+    top: 65px;
+    height: calc(100vh - 65px);
+    border-right: 1px solid var(--border-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .sidebar-label {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 0 10px 10px;
+  }
+
+  .main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .filter-pill {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s var(--ease);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .filter-pill:hover { background: var(--surface); color: var(--text-primary); }
+
+  .filter-pill.active {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .filter-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    padding: 1px 7px;
+    border-radius: 999px;
+  }
+
+  .count-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 32px 4px;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  /* ---------- Grid ---------- */
+  .container {
+    padding: 20px 32px 60px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    cursor: pointer;
+    transition: transform 0.3s var(--ease), border-color 0.3s var(--ease), background 0.3s var(--ease);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 0%, rgba(255,255,255,0.06), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s var(--ease);
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: #303236;
+    background: var(--surface-hover);
+  }
+
+  .card:hover::before { opacity: 1; }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    position: relative;
+  }
+
+  .card-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16.5px;
+    font-weight: 600;
+    margin: 0 0 5px;
+  }
+
+  .card-status {
+    font-size: 11.5px;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-dot { width: 6px; height: 6px; border-radius: 2px; }
+
+  .risk-chip {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+  }
+
+  .risk-chip .risk-num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1;
+  }
+
+  .risk-chip .risk-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+  }
+
+  .card-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+  }
+
+  .badge.danger { color: var(--danger); border-color: var(--danger-dim); background: rgba(224,102,92,0.07); }
+  .badge.warn { color: var(--warn); border-color: var(--warn-dim); background: rgba(217,180,106,0.07); }
+
+  .view-details {
+    margin-top: 16px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.25s var(--ease);
+  }
+
+  .card:hover .view-details {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+    background: rgba(255,255,255,0.06);
+  }
+
+  /* ---------- Detail Panel ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5,5,6,0.6);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s var(--ease);
+    z-index: 40;
+  }
+
+  .overlay.open { opacity: 1; pointer-events: all; }
+
+  .panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: min(460px, 92vw);
+    background: var(--bg-elevated);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.4s var(--ease);
+    z-index: 41;
+    overflow-y: auto;
+    padding-bottom: 40px;
+  }
+
+  .panel.open { transform: translateX(0); }
+
+  .panel-header {
+    padding: 28px 26px 20px;
+    border-bottom: 1px solid var(--border-soft);
+    position: relative;
+  }
+
+  .panel-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s var(--ease);
+  }
+
+  .panel-close:hover { background: var(--surface-hover); color: var(--text-primary); transform: rotate(90deg); }
+
+  .panel-identity {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .panel-avatar-ring {
+    width: 84px;
+    height: 84px;
+    border-radius: 24px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .panel-avatar-ring svg { position: absolute; inset: 0; }
+
+  .panel-avatar-inner {
+    width: 66px;
+    height: 66px;
+    border-radius: 18px;
+    background: linear-gradient(145deg, #2a2c30, #1a1b1e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+  }
+
+  .panel-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 21px;
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+
+  .panel-uuid {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .risk-readout {
+    margin-top: 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .risk-readout .num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .risk-readout .label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 16px 26px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .tab {
+    padding: 10px 16px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s var(--ease);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .tab.active { color: var(--accent); border-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text-secondary); }
+
+  .tab-content { padding: 22px 26px; display: none; }
+  .tab-content.active { display: block; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 22px; }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    bottom: 6px;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+  }
+
+  .timeline-item:last-child { padding-bottom: 0; }
+
+  .timeline-node {
+    position: absolute;
+    left: -22px;
+    top: 3px;
+    width: 11px;
+    height: 11px;
+    border-radius: 4px;
+    background: var(--bg-elevated);
+    border: 2px solid var(--accent-dim);
+  }
+
+  .timeline-node.danger { border-color: var(--danger); box-shadow: 0 0 8px rgba(224,102,92,0.4); }
+  .timeline-node.warn { border-color: var(--warn); }
+
+  .timeline-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 3px;
+  }
+
+  .timeline-meta {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .vl-tag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 14px;
+    background: var(--danger-dim);
+    color: var(--danger);
+    font-size: 10.5px;
+  }
+
+  /* Punishment / staff list */
+  .list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .list-item:last-child { border-bottom: none; }
+
+  .list-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .list-text { flex: 1; }
+
+  .list-title { font-size: 13px; font-weight: 500; margin: 0 0 2px; }
+  .list-sub { font-size: 11.5px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+  .empty-state {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-text">
+      <h1>Cosmic SMP</h1>
+      <span>staff.dashboard</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-pill"><span class="live-dot"></span> Live</div>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar" id="filters">
+    <div class="sidebar-label">Categories</div>
+    <div class="filter-pill active" data-filter="all">All players <span class="filter-count" id="count-all"></span></div>
+    <div class="filter-pill" data-filter="sus">In Sus <span class="filter-count" id="count-sus"></span></div>
+    <div class="filter-pill" data-filter="banned">Banned <span class="filter-count" id="count-banned"></span></div>
+    <div class="filter-pill" data-filter="clear">Clear <span class="filter-count" id="count-clear"></span></div>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar">
+      <div class="count-label" id="countLabel">3 players</div>
+    </div>
+    <div class="container" id="grid"></div>
+  </main>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="panel" id="panel">
+  <div class="panel-header">
+    <div class="panel-close" id="panelClose">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <div class="panel-identity">
+      <div class="panel-avatar-ring" id="panelAvatarRing">
+        <div class="panel-avatar-inner" id="panelAvatarInner"></div>
+      </div>
+      <div>
+        <h2 class="panel-name" id="panelName"></h2>
+        <div class="panel-uuid" id="panelUuid"></div>
+        <div class="risk-readout">
+          <span class="num" id="panelRiskNum"></span>
+          <span class="label">risk score</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-tab="alerts">Alerts</div>
+    <div class="tab" data-tab="punishments">Punishments</div>
+    <div class="tab" data-tab="staff">Staff Actions</div>
+  </div>
+
+  <div class="tab-content active" id="tab-alerts"></div>
+  <div class="tab-content" id="tab-punishments"></div>
+  <div class="tab-content" id="tab-staff"></div>
+</div>
+
+<script>
+// ---------- Fake data (swap this for a Supabase/API fetch later) ----------
+const players = [
+  {
+    name: "Steve", uuid: "f84c6a79-0a4e-45e0-879b-cd49ebd4c4e2",
+    status: "sus", online: true, risk: 78,
+    alerts: [
+      { check: "KillAura", vl: 8, time: "12:03:14", severity: "danger" },
+      { check: "Reach", vl: 6, time: "12:01:52", severity: "danger" },
+      { check: "AutoClicker", vl: 3, time: "11:58:20", severity: "warn" },
+      { check: "Timer", vl: 2, time: "11:40:05", severity: "warn" }
+    ],
+    punishments: [
+      { type: "Screenshare", detail: "Started by Admin_Rae", time: "2 min ago" },
+      { type: "Kick", detail: "Suspicious client brand", time: "3 days ago" }
+    ],
+    staffActions: [
+      { action: "/sus started", staff: "Admin_Rae", time: "12:04:01" },
+      { action: "Freeze applied", staff: "Admin_Rae", time: "12:03:58" },
+      { action: "Alert reviewed", staff: "Mod_Jax", time: "11:59:10" }
+    ]
+  },
+  {
+    name: "Alex", uuid: "3f1a9e2c-6b7d-4f10-9c2e-8a1d5f3b0e77",
+    status: "clear", online: true, risk: 12,
+    alerts: [
+      { check: "Timer", vl: 1, time: "09:12:44", severity: "warn" }
+    ],
+    punishments: [],
+    staffActions: [
+      { action: "Playtime reward granted", staff: "System", time: "1 hr ago" }
+    ]
+  },
+  {
+    name: "Notch", uuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+    status: "banned", online: false, risk: 94,
+    alerts: [
+      { check: "XRay", vl: 12, time: "Yesterday 20:41", severity: "danger" },
+      { check: "Fly", vl: 9, time: "Yesterday 20:38", severity: "danger" },
+      { check: "Reach", vl: 5, time: "Yesterday 20:30", severity: "warn" }
+    ],
+    punishments: [
+      { type: "Ban", detail: "XRay confirmed — BAN-1042", time: "Yesterday" },
+      { type: "Screenshare", detail: "Confirmed cheats, banned by Admin_Rae", time: "Yesterday" }
+    ],
+    staffActions: [
+      { action: "Player banned", staff: "Admin_Rae", time: "Yesterday 20:45" },
+      { action: "/sus started", staff: "Admin_Rae", time: "Yesterday 20:41" }
+    ]
+  }
+];
+
+const statusMeta = {
+  sus:    { color: "var(--warn)",   label: "In Screenshare" },
+  banned: { color: "var(--danger)", label: "Banned" },
+  clear:  { color: "var(--accent)", label: "Clear" }
+};
+
+function riskColor(risk) {
+  if (risk >= 70) return "var(--danger)";
+  if (risk >= 35) return "var(--warn)";
+  return "var(--accent)";
+}
+
+function ringSvg(risk, size, strokeWidth) {
+  // Rounded-square (squircle) progress outline instead of a circle.
+  const inset = strokeWidth / 2;
+  const w = size - strokeWidth;
+  const corner = size * 0.26;
+  const straight = w - 2 * corner;
+  // Perimeter of a rounded square = 4 straight edges + 4 quarter-circle corners.
+  const perimeter = 4 * straight + 2 * Math.PI * corner;
+  const offset = perimeter - (risk / 100) * perimeter;
+  const color = riskColor(risk);
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <rect x="${inset}" y="${inset}" width="${w}" height="${w}" rx="${corner}" ry="${corner}"
+        fill="none" stroke="var(--ring-track)" stroke-width="${strokeWidth}"/>
+      <rect x="${inset}" y="${inset}" width="${w}" height="${w}" rx="${corner}" ry="${corner}"
+        fill="none" stroke="${color}" stroke-width="${strokeWidth}"
+        stroke-dasharray="${perimeter}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+    </svg>`;
+}
+
+function initials(name) { return name.slice(0, 2).toUpperCase(); }
+
+const grid = document.getElementById('grid');
+const countLabel = document.getElementById('countLabel');
+let activeFilter = 'all';
+
+function renderGrid() {
+  const filtered = players.filter(p => activeFilter === 'all' || p.status === activeFilter);
+  countLabel.textContent = `${filtered.length} player${filtered.length !== 1 ? 's' : ''}`;
+
+  ['all', 'sus', 'banned', 'clear'].forEach(key => {
+    const n = key === 'all' ? players.length : players.filter(p => p.status === key).length;
+    document.getElementById(`count-${key}`).textContent = n;
+  });
+
+  grid.innerHTML = filtered.map((p) => {
+    const meta = statusMeta[p.status];
+    return `
+    <div class="card" data-name="${p.name}">
+      <div class="card-top">
+        <div>
+          <h3 class="card-name">${p.name}</h3>
+          <div class="card-status" style="color:${meta.color}">
+            <span class="status-dot" style="background:${p.online ? meta.color : 'var(--text-muted)'}"></span>
+            ${p.online ? meta.label : 'Offline'}
+          </div>
+        </div>
+        <div class="risk-chip" style="border-color: color-mix(in srgb, ${riskColor(p.risk)} 40%, var(--border))">
+          <span class="risk-num" style="color:${riskColor(p.risk)}">${p.risk}</span>
+          <span class="risk-tag">risk</span>
+        </div>
+      </div>
+      <div class="card-badges">
+        <span class="badge ${p.alerts.length > 2 ? 'danger' : ''}">${p.alerts.length} alerts</span>
+        <span class="badge ${p.punishments.length ? 'warn' : ''}">${p.punishments.length} actions</span>
+      </div>
+      <button class="view-details">View Details →</button>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => openPanel(card.dataset.name));
+  });
+}
+
+document.getElementById('filters').addEventListener('click', (e) => {
+  const pill = e.target.closest('.filter-pill');
+  if (!pill) return;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  activeFilter = pill.dataset.filter;
+  renderGrid();
+});
+
+// ---------- Detail panel ----------
+const overlay = document.getElementById('overlay');
+const panel = document.getElementById('panel');
+
+function openPanel(name) {
+  const p = players.find(pl => pl.name === name);
+  if (!p) return;
+
+  document.getElementById('panelAvatarRing').innerHTML = ringSvg(p.risk, 84, 4) + `<div class="panel-avatar-inner">${initials(p.name)}</div>`;
+  document.getElementById('panelName').textContent = p.name;
+  document.getElementById('panelUuid').textContent = p.uuid;
+  const riskNum = document.getElementById('panelRiskNum');
+  riskNum.textContent = p.risk;
+  riskNum.style.color = riskColor(p.risk);
+
+  document.getElementById('tab-alerts').innerHTML = p.alerts.length ? `
+    <div class="timeline">
+      ${p.alerts.map(a => `
+        <div class="timeline-item">
+          <div class="timeline-node ${a.severity}"></div>
+          <p class="timeline-title">${a.check} <span class="vl-tag">VL ${a.vl}</span></p>
+          <div class="timeline-meta">${a.time}</div>
+        </div>`).join('')}
+    </div>` : `<div class="empty-state">No alerts recorded.</div>`;
+
+  document.getElementById('tab-punishments').innerHTML = p.punishments.length ? p.punishments.map(pu => `
+    <div class="list-item">
+      <div class="list-icon">⛔</div>
+      <div class="list-text">
+        <p class="list-title">${pu.type}</p>
+        <div class="list-sub">${pu.detail}</div>
+      </div>
+      <div class="list-sub">${pu.time}</div>
+    </div>`).join('') : `<div class="empty-state">No punishment history.</div>`;
+
+  document.getElementById('tab-staff').innerHTML = p.staffActions.length ? p.staffActions.map(sa => `
+    <div class="list-item">
+      <div class="list-icon">👮</div>
+      <div class="list-text">
+        <p class="list-title">${sa.action}</p>
+        <div class="list-sub">by ${sa.staff}</div>
+      </div>
+      <div class="list-sub">${sa.time}</div>
+    </div>`).join('') : `<div class="empty-state">No staff actions logged.</div>`;
+
+  overlay.classList.add('open');
+  panel.classList.add('open');
+}
+
+function closePanel() {
+  overlay.classList.remove('open');
+  panel.classList.remove('open');
+}
+
+overlay.addEventListener('click', closePanel);
+document.getElementById('panelClose').addEventListener('click', closePanel);
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+});
+
+renderGrid();
+</script>
+
+</body>
+</html>
