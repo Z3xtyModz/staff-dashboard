@@ -744,11 +744,25 @@ const reloadPlayers = debounce(loadPlayers, 400);
 
 function subscribeToChanges() {
   sb.channel('dashboard-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, reloadPlayers)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, reloadPlayers)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'punishments' }, reloadPlayers)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_actions' }, reloadPlayers)
-    .subscribe();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, (payload) => {
+      console.log('Realtime event on players:', payload.eventType, payload.new || payload.old);
+      reloadPlayers();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, (payload) => {
+      console.log('Realtime event on alerts:', payload.eventType);
+      reloadPlayers();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'punishments' }, (payload) => {
+      console.log('Realtime event on punishments:', payload.eventType);
+      reloadPlayers();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_actions' }, (payload) => {
+      console.log('Realtime event on staff_actions:', payload.eventType);
+      reloadPlayers();
+    })
+    .subscribe((status, err) => {
+      console.log('Realtime subscription status:', status, err || '');
+    });
 }
 
 const statusMeta = {
